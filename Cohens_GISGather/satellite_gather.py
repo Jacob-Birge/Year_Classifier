@@ -18,7 +18,9 @@ Some useful links for debugging request:
 https://gis.hennepin.us/arcgis/services/Imagery/UTM_Aerial_2020/MapServer/WMSServer?request=GetCapabilities&service=WMS
 https://kygisserver.ky.gov/arcgis/rest/services/WGS84WM_Services/Ky_Imagery_2019_6IN_WGS84WM/MapServer
 '''
-year = "2020"
+availableYears = ["2020", "2018", "2015", "2012", "2009", "2006", "2004", "2002", "2000"]
+year = availableYears[5]
+print("Downloading Data For " + year)
 parser = argparse.ArgumentParser(description='Download Image Set to folder')
 parser.add_argument('--path', type=str, help='Directory to download to.', default= '../Data/'+year+'/')
 parser.add_argument('--gsd', type=int, help='Ground Sample Distance', default=1)
