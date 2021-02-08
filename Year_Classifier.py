@@ -30,7 +30,7 @@ dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
 
 for i_batch, sample_batched in enumerate(dataloader):
-  print(sample_batched)
+  print(sample_batched[0])
 
   # observe 4th batch and stop.
   if (i_batch == 3):
