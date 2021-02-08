@@ -30,10 +30,10 @@ dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
 
 for i_batch, sample_batched in enumerate(dataloader):
-  print(torch.Tensor.shape(sample_batched[0])
+  print(torch.Tensor.shape(sample_batched[0]))
 
   # observe 4th batch and stop.
-  if i_batch == 3:
+  if (i_batch == 3):
     plt.figure()
     plt.imshow(sample_batched)
     plt.axis('off')
