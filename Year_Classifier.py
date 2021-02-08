@@ -22,16 +22,15 @@ import os
 #data is stored in format ./Data/{lat}_{long}.tif
 dataPath = "./Data"
 data_transform = transforms.Compose([
-    transforms.RandomSizedCrop(224),
-    transforms.ToTensor()
-    #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-  ])
+  transforms.RandomSizedCrop(224),
+  transforms.ToTensor()
+  #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
 
 for i_batch, sample_batched in enumerate(dataloader):
-  print(sample_batched)
-  print(i_batch, sample_batched['image'].size())
+  print(torch.Tensor.shape(sample_batched[0])
 
   # observe 4th batch and stop.
   if i_batch == 3:
