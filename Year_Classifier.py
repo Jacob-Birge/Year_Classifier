@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import time
 import copy
 import os
+import tensorflow as tf
 
 #data is stored in format ./Data/{lat}_{long}.tif
 dataPath = "./Data"
@@ -32,7 +33,8 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, nu
 for i_batch, sample_batched in enumerate(dataloader):
   # observe 4th batch and stop.
   if (i_batch == 3):
-    print(torch.Tensor.shape(sample_batched[0]))
+    print(sample_batched[0])
+    print(tf.shape(sample_batched[0]))
     plt.figure()
     plt.imshow(sample_batched)
     plt.axis('off')
