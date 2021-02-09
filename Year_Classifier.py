@@ -83,6 +83,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
             for inputs, labels in dataloaders[phase]:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
+                print(inputs)
+                print(labels)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
