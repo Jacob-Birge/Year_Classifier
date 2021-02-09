@@ -28,6 +28,8 @@ def imshow(inp, title=None):
         plt.title(title)
     plt.pause(0.001)  # pause a bit so that plots are updated
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 #data is stored in format ./Data/{lat}_{long}.tif
 dataPath = "./Data"
 data_transform = transforms.Compose([
@@ -37,14 +39,20 @@ data_transform = transforms.Compose([
 ])
 dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 class_names = dataset.classes
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
 
-print(len(dataloader))
+numInTrain = int(len(dataset)*.8)
 
-for i_batch, (inputs, classes) in enumerate(dataloader):
-  # observe 4th batch and stop.
-  if (i_batch == 3):
-    print(classes)
-    print(tf.shape(inputs))
-    out = torchvision.utils.make_grid(inputs)
-    imshow(out, title=[class_names[x] for x in classes])
+splitSet = torch.utils.data.random_split(dataset, [numInTrain, len(dataset)-numInTrain])
+image_datasets = {x: splitSet[i]
+                  for i, x in enumerate(['train', 'val'])}
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=4,
+                                             shuffle=True, num_workers=4)
+              for x in ['train', 'val']}
+
+# Get a batch of training data
+inputs, classes = next(iter(dataloaders['train']))
+
+# Make a grid from batch
+out = torchvision.utils.make_grid(inputs)
+
+imshow(out, title=[class_names[x] for x in classes])
