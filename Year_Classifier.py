@@ -30,10 +30,11 @@ data_transform = transforms.Compose([
 dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
 
-for i_batch, sample_batched in enumerate(dataloader):
+for i_batch, (sample_batched, idk) in enumerate(dataloader):
   # observe 4th batch and stop.
   if (i_batch == 3):
-    print(sample_batched[0])
+    print(idk)
+    print(sample_batched)
     print(tf.shape(sample_batched[0]))
     plt.figure()
     plt.imshow(sample_batched)
