@@ -39,6 +39,8 @@ dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 class_names = dataset.classes
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
 
+print(len(dataloader))
+
 for i_batch, (inputs, classes) in enumerate(dataloader):
   # observe 4th batch and stop.
   if (i_batch == 3):
