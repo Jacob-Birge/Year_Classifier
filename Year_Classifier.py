@@ -30,6 +30,7 @@ def imshow(inp, title=None):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 #data is stored in format ./Data/{lat}_{long}.tif
 dataPath = "./Data"
