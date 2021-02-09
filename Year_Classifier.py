@@ -81,8 +81,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
             # Iterate over data.
             for inputs, labels in dataloaders[phase]:
-                print(inputs)
-                print(labels)
+                print("hello")
+                print("labels")
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
