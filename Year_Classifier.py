@@ -37,7 +37,7 @@ data_transform = transforms.Compose([
 ])
 dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
 class_names = dataset.classes
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
 
 print(len(dataloader))
 
