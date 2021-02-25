@@ -131,3 +131,6 @@ dmypy.json
 
 # Data
 Data/*
+
+# Pytorch Lightning Logs
+lightning_logs/*

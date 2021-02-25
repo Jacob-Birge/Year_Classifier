@@ -1,175 +1,87 @@
-from PIL import Image
-from os import listdir
-from os.path import isfile, join
-import sys
-from tqdm import tqdm
-
+import matplotlib
+matplotlib.use('Agg')
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from torch.optim import lr_scheduler
-import numpy as np
-import torchvision
+import pytorch_lightning as pl
 from torchvision import *
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
-
 import matplotlib.pyplot as plt
-import time
-import copy
-import os
-import tensorflow as tf
+from pytorch_lightning.callbacks import ModelCheckpoint
 
-def imshow(inp, title=None):
+def imSave(inp, filename):
     """Imshow for Tensor."""
     inp = inp.numpy().transpose((1, 2, 0))
-    plt.imshow(inp)
-    if title is not None:
-        plt.title(title)
+    plt.imsave(filename+".png", inp)
     plt.pause(0.001)  # pause a bit so that plots are updated
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+class LightningResnet18(pl.LightningModule):
+    def __init__(self):
+        super(LightningResnet18, self).__init__()
+        self.model = models.resnet18(pretrained=True)
+        self.model.fc = nn.Linear(self.model.fc.in_features, 9)
+        self.lossFunc = nn.CrossEntropyLoss()
+    
+    def forward(self, x):
+        return self.model(x)
 
-#data is stored in format ./Data/{lat}_{long}.tif
-dataPath = "./Data"
-data_transform = transforms.Compose([
-  transforms.RandomSizedCrop(224),
-  transforms.ToTensor()
-  #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
-dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
-class_names = dataset.classes
+    def configure_optimizers(self):
+        return optim.AdamW(self.model.parameters(), lr=0.001)
+    
+    def loss(self, logits, labels):
+        return self.lossFunc(logits, labels)
 
-numInTrain = int(len(dataset)*.8)
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss(logits, y)
+        self.log('train_loss', loss)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.loss(logits, y)
+        self.log('val_loss', loss)
 
-splitSet = torch.utils.data.random_split(dataset, [numInTrain, len(dataset)-numInTrain])
-image_datasets = {x: splitSet[i]
-                  for i, x in enumerate(['train', 'val'])}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=4,
-                                             shuffle=True, num_workers=4)
-              for x in ['train', 'val']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+class LightningDataModule(pl.LightningDataModule):
+    def setup(self, stage=None):
+        #data is stored in format ./Data/{lat}_{long}.tif
+        dataPath = "./Data"
+        #define transforms
+        data_transform = transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.ToTensor()
+            #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        #pull in dataset
+        dataset = datasets.ImageFolder(root=dataPath, transform=data_transform)
+        self.class_names = dataset.classes
+        self.numClasses = len(self.class_names)
+        #split train and val set
+        numInTrain = int(len(dataset)*.8)
+        splitSet = torch.utils.data.random_split(dataset, [numInTrain, len(dataset)-numInTrain])
+        self.trainSet = splitSet[0]
+        self.valSet = splitSet[1]
+    
+    def train_dataloader(self):
+        return DataLoader(self.trainSet, batch_size=4, shuffle=True, num_workers=4)
 
-# Get a batch of training data
-inputs, classes = next(iter(dataloaders['train']))
+    def val_dataloader(self):
+        return DataLoader(self.valSet, batch_size=4, shuffle=True, num_workers=8)
 
-# Make a grid from batch
-out = torchvision.utils.make_grid(inputs)
+dataModule = LightningDataModule()
+model = LightningResnet18.load_from_checkpoint("~/SMART_Project/lightning_logs/version_9/checkpoints/epoch=10-step=102365.ckpt")
+model.eval()
 
-imshow(out, title=[class_names[x] for x in classes])
+checkpoint_callback = ModelCheckpoint(
+    save_top_k=1,
+    verbose=True,
+    monitor='val_loss',
+    mode='min',
+    prefix=''
+)
 
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
-    since = time.time()
-
-    best_model_wts = copy.deepcopy(model.state_dict())
-    best_acc = 0.0
-
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-
-        # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
-            if phase == 'train':
-                model.train()  # Set model to training mode
-            else:
-                model.eval()   # Set model to evaluate mode
-
-            running_loss = 0.0
-            running_corrects = 0
-
-            # Iterate over data.
-            for inputs, labels in dataloaders[phase]:
-                inputs = inputs.to(device)
-                labels = labels.to(device)
-
-                # zero the parameter gradients
-                optimizer.zero_grad()
-
-                # forward
-                # track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    loss = criterion(outputs, labels)
-
-                    # backward + optimize only if in training phase
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
-
-                # statistics
-                running_loss += loss.item() * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
-            if phase == 'train':
-                scheduler.step()
-
-            epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects.double() / dataset_sizes[phase]
-
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                phase, epoch_loss, epoch_acc))
-
-            # deep copy the model
-            if phase == 'val' and epoch_acc > best_acc:
-                best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
-
-        print()
-
-    time_elapsed = time.time() - since
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
-    print('Best val Acc: {:4f}'.format(best_acc))
-
-    # load best model weights
-    model.load_state_dict(best_model_wts)
-    return model
-
-def visualize_model(model, num_images=6):
-    was_training = model.training
-    model.eval()
-    images_so_far = 0
-    fig = plt.figure()
-
-    with torch.no_grad():
-        for i, (inputs, labels) in enumerate(dataloaders['val']):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-
-            outputs = model(inputs)
-            _, preds = torch.max(outputs, 1)
-
-            for j in range(inputs.size()[0]):
-                images_so_far += 1
-                ax = plt.subplot(num_images//2, 2, images_so_far)
-                ax.axis('off')
-                ax.set_title('predicted: {}'.format(class_names[preds[j]]))
-                imshow(inputs.cpu().data[j])
-
-                if images_so_far == num_images:
-                    model.train(mode=was_training)
-                    return
-        model.train(mode=was_training)
-
-model_ft = models.resnet18(pretrained=False)
-num_ftrs = model_ft.fc.in_features
-print(device)
-# Here the size of each output sample is set to 2.
-# Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-model_ft.fc = nn.Linear(num_ftrs, len(class_names))
-
-model_ft = model_ft.to(device)
-
-criterion = nn.CrossEntropyLoss()
-
-# Observe that all parameters are being optimized
-optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
-
-# Decay LR by a factor of 0.1 every 7 epochs
-exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
-
-model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=25)
-
-visualize_model(model_ft)
+trainer = pl.Trainer(gpus=[0], max_epochs=25, checkpoint_callback=checkpoint_callback)
+trainer.fit(model, dataModule)
